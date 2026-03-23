@@ -1,0 +1,17 @@
+services:
+  openvpn3:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: openvpn3
+    container_name: openvpn3
+    image: openvpn3:latest
+    cap_add:
+      - NET_ADMIN
+    env_file:
+      - .env
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - ./config.ovpn:/app/config.ovpn
+    restart: unless-stopped
