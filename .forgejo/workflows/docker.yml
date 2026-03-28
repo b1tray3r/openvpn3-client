@@ -1,0 +1,8 @@
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: docker
+    steps:
+      - run: echo "hello world"
+      
