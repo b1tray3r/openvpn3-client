@@ -15,11 +15,11 @@ Docker-based OpenVPN 3 client with TOTP authentication.
    ```
 
 2. Edit `.env` and fill in your credentials:
-   - `USERNAME` - VPN username
-   - `PASSWORD` - VPN password
-   - `PRIVATE_KEY_PASSWORD` - Private key password (if applicable)
-   - `TOTP_SECRET` - TOTP secret for 2FA
-   - `DNS` - VPN DNS servers
+   - `VPN_USERNAME` - VPN username
+   - `VPN_PASSWORD` - VPN password
+   - `VPN_PRIVATE_KEY_PASSWORD` - Private key password (if applicable)
+   - `VPN_TOTP_SECRET` - TOTP secret for 2FA (base32 encoded)
+   - `VPN_DNS` - VPN DNS servers (comma-separated)
 
 3. Place your OpenVPN config as `config.ovpn`
 

@@ -13,7 +13,7 @@ VOLUME [ "/app" ]
 ENV TZ=Europe/Berlin \
     PUID=1000 \
     PGID=1000 \
-    DNS="1.1.1.1,1.0.0.1"
+    VPN_DNS="1.1.1.1,1.0.0.1"
 
 RUN apt-get -y update && apt-get -y dist-upgrade \
         && apt-get install -y tini iptables curl dnsutils net-tools iproute2 iputils-ping gnupg lsb-release procps oathtool \

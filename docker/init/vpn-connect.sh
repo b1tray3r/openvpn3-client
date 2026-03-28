@@ -33,10 +33,16 @@ chmod 0666 /dev/net/tun
 
 echo "Connecting to remote server at $(grep -e '^remote ' "$OVPN" | awk '{print $2}')"
 
+# Check if credentials are provided
+if [[ -z "$VPN_USERNAME" || -z "$VPN_PASSWORD" ]]; then
+    echo "ERROR: VPN_USERNAME and VPN_PASSWORD must be set" >&2
+    exit 1
+fi
+
 TOTP_CODE=""
-if [[ -n "$TOTP_SECRET" ]]; then
+if [[ -n "$VPN_TOTP_SECRET" ]]; then
     echo "Generating TOTP code..."
-    TOTP_CODE=$(oathtool --totp -b "$TOTP_SECRET" 2>/dev/null)
+    TOTP_CODE=$(oathtool --totp -b "$VPN_TOTP_SECRET" 2>/dev/null)
     if [[ -z "$TOTP_CODE" ]]; then
         echo "Failed to generate TOTP" >&2
         exit 1
@@ -44,28 +50,46 @@ if [[ -n "$TOTP_SECRET" ]]; then
     echo "TOTP generated: $TOTP_CODE"
 fi
 
-CREDENTIALS=$(printf "%s\n%s\n%s\n%s\n" "$USERNAME" "$PASSWORD" "$TOTP_CODE" "$PRIVATE_KEY_PASSWORD")
-
 echo "Starting VPN session with credentials..."
 
-if ! echo "$CREDENTIALS" | openvpn3 session-start --config $OVPN --timeout 20 --persist-tun \
+# Create credentials file for openvpn3
+CRED_FILE=$(mktemp)
+trap "rm -f $CRED_FILE" EXIT
+
+{
+    echo "$VPN_USERNAME"
+    echo "$VPN_PASSWORD"
+    [[ -n "$TOTP_CODE" ]] && echo "$TOTP_CODE"
+    [[ -n "$VPN_PRIVATE_KEY_PASSWORD" ]] && echo "$VPN_PRIVATE_KEY_PASSWORD"
+} > "$CRED_FILE"
+
+if ! cat "$CRED_FILE" | openvpn3 session-start --config $OVPN --timeout 20 --persist-tun \
         || ! ip r | grep -qe '^0.0.0.0/1 '; then
     echo "Failed to connect to the VPN" >&2
+    rm -f "$CRED_FILE"
     exit 1
 fi
 
+rm -f "$CRED_FILE"
+
 sleep 2
 
-if [ -n "$DNS" ]; then
+if [ -n "$VPN_DNS" ]; then
     echo "Configuring DNS information"
 
-    # Update DNS
-    cp /etc/resolv.conf /etc/resolv.conf-bak
-    echo "" > /etc/resolv.conf
-
-    for ip in $(echo $DNS | sed 's/,/ /'); do
-        echo "nameserver $ip" >> /etc/resolv.conf
-    done
+    # Prepend VPN DNS servers to resolv.conf (before Docker's DNS)
+    cp /etc/resolv.conf /etc/resolv.conf.bak
+    
+    # Build new resolv.conf with VPN DNS first
+    {
+        echo "# VPN DNS servers"
+        for ip in $(echo $VPN_DNS | sed 's/,/ /'); do
+            echo "nameserver $ip"
+        done
+        echo ""
+        echo "# Original Docker DNS"
+        cat /etc/resolv.conf.bak
+    } > /etc/resolv.conf
 fi
 
 echo ""
